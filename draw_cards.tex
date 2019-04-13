@@ -1,0 +1,51 @@
+\DeclareSymbolFont{extraup}{U}{zavm}{m}{n}
+\DeclareMathSymbol{\varheart}{\mathalpha}{extraup}{86}
+\DeclareMathSymbol{\vardiamond}{\mathalpha}{extraup}{87}
+
+% Actually draw the card
+% This will be called from within a tikz environment within a appropriatley
+% shifted scope. Draw the card in the rectangle between (0,0) and (1,-1.4).
+% Arguments:
+%     #1 suit (clubs: 0, diamond: 1, heart: 2, spade: 3)
+%     #2 value (ace: 1, 2-10, jack: 11, queen: 12, king: 13)
+%     #3 selected (0 or 1)
+% Keep this short, as it will be called thousands of times
+\definecolor{selectedcolor}{RGB}{173,255,189}
+\newcommand*{\doDrawCard}[3]{
+    \ifthenelse{#3=1}{
+        \draw[rounded corners=5pt,fill=selectedcolor] (0,0) rectangle ++(1,-1.4);
+    }{
+        \draw[rounded corners=5pt,fill=white] (0,0) rectangle ++(1,-1.4);
+    }
+    %\draw (0,-0.7) -- ++(1,0);
+    %\draw (0,0) rectangle ++(1,-1.4);
+    \ifthenelse{#1=0 \or #1=3}{
+        \node[text centered,text width=1cm,below] at (0.5,0) {\getValue{#2}~\getSuit{#1}};
+        \node[text centered,text width=1cm,below,rotate=180] at (0.5,-1.4) {\getValue{#2}~\getSuit{#1}};
+    }{
+        \node[text centered,text width=1cm,below,red] at (0.5,0) {\getValue{#2}~\getSuit{#1}};
+        \node[text centered,text width=1cm,below,red,rotate=180] at (0.5,-1.4) {\getValue{#2}~\getSuit{#1}};
+    }
+}
+
+\newcommand*{\drawMode}[1]{
+    \begin{tikzpicture}
+        \path[draw, use as bounding box] (0,0) rectangle ++(1,-1);
+        \ifthenelse{#1=0}{
+            \node at (0.5,-0.5) {\getSuit{0}};
+        }{
+            \ifthenelse{#1=1}{
+                \node at (0.5,-0.5) {\getSuit{0}\getSuit{1}};
+            }{
+                \node[text centered, text width=1cm] at (0.5,-0.5) {\getSuit{0}~\getSuit{1}\\\getSuit{2}~\getSuit{3}};
+            }
+        }
+    \end{tikzpicture}
+}
+
+\newcommand*{\getSuit}[1]{%
+    \ifthenelse{#1=0}{$\clubsuit$}{\ifthenelse{#1=1}{$\vardiamond$}{\ifthenelse{#1=2}{$\varheart$}{$\spadesuit$}}}%
+}
+\newcommand*{\getValue}[1]{%
+    \ifthenelse{#1=1}{A}{\ifthenelse{#1=11}{J}{\ifthenelse{#1=12}{Q}{\ifthenelse{#1=13}{K}{#1}}}}%
+}

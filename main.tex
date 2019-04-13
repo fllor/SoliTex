@@ -1,0 +1,213 @@
+\documentclass{article}
+
+\usepackage[paperheight=16.5cm,paperwidth=11.9cm]{geometry}
+\pagenumbering{gobble}
+
+\usepackage[pdfstartview=Fit]{hyperref}
+
+\input{core.tex}
+
+\pgfmathsetmacro\numCols{8}
+\pgfmathsetmacro\maxStack{16}
+
+\begin{document}
+
+\drawBackground
+
+\foreach \i in {0,...,\numCols-1}{
+    \foreach \j in {0,...,\maxStack-1}{
+        \makeCard{\i}{\j}
+    }
+}
+
+\makeSpecialCard{0.00}{-2}{o1}
+\makeSpecialCard{0.95}{-2}{o2}
+\makeSpecialCard{1.90}{-2}{o3}
+\makeSpecialCard{2.85}{-2}{o4}
+
+\makeSpecialCard{4.15}{-2}{f1}
+\makeSpecialCard{5.10}{-2}{f2}
+\makeSpecialCard{6.05}{-2}{f3}
+\makeSpecialCard{7.00}{-2}{f4}
+
+\foreach \i in {0,...,\numCols-1}{
+    \makeButton{\i}
+}
+
+\makeCardButton{0.00}{-2}{o1}
+\makeCardButton{0.95}{-2}{o2}
+\makeCardButton{1.90}{-2}{o3}
+\makeCardButton{2.85}{-2}{o4}
+
+\makeCardButton{4.15}{-2}{f1}
+\makeCardButton{5.10}{-2}{f2}
+\makeCardButton{6.05}{-2}{f3}
+\makeCardButton{7.00}{-2}{f4}
+
+\makeGameButton{2}{13.5}{Deal cards}{
+    deck_size = 52;
+    markedColumn = undefined;
+    function get_card(col, idx) {return anim["c" + col + "x" + idx].frameNum - 1;}
+    function set_card(col, idx, id) {anim["c" + col + "x" + idx].frameNum = 1 + id;}
+    function set_card_s(label, id) {anim[label].frameNum = 1 + id;}
+    function get_card_s(label) {return anim[label].frameNum - 1;}
+    function shuffle(num_suits) {
+        single_suit = num_suits == 1;
+        num_cards = num_suits * 13;
+        perm = [];
+        for(i = 0; i < deck_size; i++)
+            perm.push([Math.random(), i]);
+        perm = perm.sort();
+        for(idx = 0; idx < \maxStack; idx++) {
+            for(col = 0; col < \numCols; col++) {
+                if(idx*\numCols+col < deck_size)
+                    set_card(col, idx, mod(perm[idx*\numCols+col][1], num_cards));
+                else
+                    set_card(col, idx, -1);
+            }
+        }
+        set_card_s("o1", -1);
+        set_card_s("o2", -1);
+        set_card_s("o3", -1);
+        set_card_s("o4", -1);
+        set_card_s("f1", -1);
+        set_card_s("f2", -1);
+        set_card_s("f3", -1);
+        set_card_s("f4", -1);
+    }
+    function get_column_length(col) {
+        for(i = 0; i < \maxStack; i++)
+            if(get_card(col, i) == -1)
+                return i;
+        return \maxStack;
+    }
+    function get_top_card(col) {
+        len = get_column_length(col);
+        if(len == 0) return -1;
+        return get_card(col, len-1);
+    }
+    function get_num_marked(col) {
+        for(i = 0; i < \maxStack; i++)
+            if(get_card(col, i) >= deck_size)
+                return i;
+        return \maxStack;
+    }
+    function mod(x,y) {return x - Math.floor(x/y)*y;}
+    function can_put_on_top(bottom, top) {
+        if(bottom == -1) return true;
+        if(mod(bottom,13) != mod(top + 1,13)) return false;
+        if(mod(bottom,13) == 0) return false;
+        if(single_suit) return true;
+        s1 = Math.floor(bottom/13);
+        s2 = Math.floor(top/13);
+        if((s1 == 0) || (s1 == 3)) return (s2 == 1) || (s2 == 2);
+        return (s2 == 0) || (s2 == 3);
+    }
+    function column_clicked(col) {
+        if(typeof(markedColumn)=="undefined") {
+            if(get_column_length(col) > 0) {
+                markedColumn = col;
+                set_card(col, get_column_length(col)-1, get_top_card(markedColumn) + deck_size);
+                return;
+            }
+        } else if(markedColumn == col) {
+            m = get_num_marked(col);
+            if(m>0 && can_put_on_top(get_card(col, m-1), get_card(col, m) - deck_size))
+                set_card(col, m-1, get_card(col, m-1) + deck_size);
+            else {
+                for(num = get_num_marked(col); num < get_column_length(col); num++)
+                    set_card(col, num, get_card(col, num) - deck_size);
+                markedColumn = undefined;        
+            }
+        } else if(markedColumn < 0) {
+            label = "o" + (-markedColumn);
+            if(get_column_length(col) < \maxStack && can_put_on_top(get_top_card(col), get_card_s(label) - deck_size)) {
+                set_card(col, get_column_length(col), get_card_s(label) - deck_size);
+                set_card_s(label, -1);
+                markedColumn = undefined;
+            }
+        } else {
+            num1 = get_num_marked(markedColumn);
+            if(get_column_length(col) + get_column_length(markedColumn) - num1 > \maxStack)
+                return;
+            if(can_put_on_top(get_top_card(col), get_card(markedColumn, num1) - deck_size)) {
+                top_card = get_column_length(markedColumn);
+                for(num = num1; num < top_card; num++) {
+                    set_card(col, get_column_length(col), get_card(markedColumn, num) - deck_size);
+                    set_card(markedColumn, num, -1);
+                }
+                markedColumn = undefined;
+            }
+        }
+    }
+    function special_clicked(label) {
+        if(typeof(markedColumn)=="undefined") {
+            if(label.startsWith("o") && get_card_s(label) != -1) {
+                set_card_s(label, get_card_s(label) + deck_size);
+                markedColumn = -parseInt(label.slice(1));
+            }
+        } else if(markedColumn < 0) {
+            if(label.startsWith("o")) {
+                o = parseInt(label.slice(1));
+                if(o == -markedColumn) { 
+                    if(get_card_s(label) >= deck_size) {
+                        set_card_s(label, get_card_s(label) - deck_size);
+                        markedColumn = undefined;
+                    }
+                } else {
+                    if(get_card_s(label) == -1) {
+                        set_card_s(label, get_card_s("o" + (-markedColumn)) - deck_size);
+                        set_card_s("o" + (-markedColumn), -1);
+                        markedColumn = undefined;
+                    }
+                }
+            } else {
+                selected = get_card_s("o" + (-markedColumn));
+                if((get_card_s(label) == -1 && mod(selected, 13) == 0) || (get_card_s(label) == selected - deck_size - 1)) {
+                    set_card_s(label, selected - deck_size);
+                    set_card_s("o" + (-markedColumn), -1);
+                    markedColumn = undefined;
+                    if(mod(get_card_s("f1"),13)==12 && mod(get_card_s("f2"),13)==12 && mod(get_card_s("f3"),13)==12 && mod(get_card_s("f4"),13)==12) {
+                        set_card_s("f1", get_card_s("f1") + deck_size);
+                        set_card_s("f2", get_card_s("f2") + deck_size);
+                        set_card_s("f3", get_card_s("f3") + deck_size);
+                        set_card_s("f4", get_card_s("f4") + deck_size);
+                    }
+                }
+            }
+            return
+        } else if(get_num_marked(markedColumn) != get_column_length(markedColumn)-1)
+            return;
+        else if(label.startsWith("o")) {
+            if(get_card_s(label) == -1) {
+                set_card_s(label, get_top_card(markedColumn) - deck_size);
+                set_card(markedColumn, get_column_length(markedColumn)-1, -1);
+                markedColumn = undefined;
+            }
+        } else {
+            selected = get_top_card(markedColumn);
+            if((get_card_s(label) == -1 && mod(selected, 13) == 0) || (get_card_s(label) == selected - deck_size - 1)) {
+                set_card_s(label, selected - deck_size);
+                set_card(markedColumn, get_column_length(markedColumn)-1, -1);
+                markedColumn = undefined;
+                if(mod(get_card_s("f1"),13)==12 && mod(get_card_s("f2"),13)==12 && mod(get_card_s("f3"),13)==12 && mod(get_card_s("f4"),13)==12) {
+                    set_card_s("f1", get_card_s("f1") + deck_size);
+                    set_card_s("f2", get_card_s("f2") + deck_size);
+                    set_card_s("f3", get_card_s("f3") + deck_size);
+                    set_card_s("f4", get_card_s("f4") + deck_size);
+                }
+            }
+        }
+    }
+    shuffle(Math.max(1, 2*anim["mode"].frameNum));
+}
+
+\begin{textblock}{2}(5,13.5)
+    \begin{animateinline}[label=mode,poster=last,step]{1}
+        \drawMode{0} \newframe
+        \drawMode{1} \newframe
+        \drawMode{2}
+    \end{animateinline}
+\end{textblock}
+
+\end{document}
